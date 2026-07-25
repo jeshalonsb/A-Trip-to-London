@@ -35,6 +35,10 @@ public class CoinManager : MonoBehaviour
         {
             hotelHighlight.DisableHighlight();
         }
+        if (objectiveText != null)
+        {
+            objectiveText.text = "Objective: Explore the city (collect all coins)";
+        }
 
         UpdateUI();
     }

@@ -15,6 +15,10 @@ public class HotelSequenceManager : MonoBehaviour
     [SerializeField] private Transform player;
     [SerializeField] private Transform dayTwoSpawnPoint;
 
+    [Header("Building Highlights")]
+    [SerializeField] private BuildingHighlight hotelHighlight;
+    [SerializeField] private BuildingHighlight coffeeShopHighlight;
+
     [Header("Transition")]
     [SerializeField] private float fadeDuration = 1f;
     [SerializeField] private float dayTextDuration = 2f;
@@ -37,11 +41,23 @@ public class HotelSequenceManager : MonoBehaviour
 
     private void Start()
     {
-        dayTransitionCanvas.alpha = 0f;
-        dayTransitionCanvas.interactable = false;
-        dayTransitionCanvas.blocksRaycasts = false;
+        if (dayTransitionCanvas != null)
+        {
+            dayTransitionCanvas.alpha = 0f;
+            dayTransitionCanvas.interactable = false;
+            dayTransitionCanvas.blocksRaycasts = false;
+        }
 
-        dayText.gameObject.SetActive(false);
+        if (dayText != null)
+        {
+            dayText.gameObject.SetActive(false);
+        }
+
+        // The coffee shop should not be highlighted during Day 1.
+        if (coffeeShopHighlight != null)
+        {
+            coffeeShopHighlight.DisableHighlight();
+        }
     }
 
     public void UnlockHotelEntrance()
@@ -52,16 +68,11 @@ public class HotelSequenceManager : MonoBehaviour
         {
             objectiveText.text = "Objective: Enter the hotel";
         }
-
-        Debug.Log("Hotel entrance unlocked.");
     }
 
     public void TryEnterHotel()
     {
-        if (!hotelEntranceUnlocked)
-            return;
-
-        if (transitionStarted)
+        if (!hotelEntranceUnlocked || transitionStarted)
             return;
 
         transitionStarted = true;
@@ -70,32 +81,60 @@ public class HotelSequenceManager : MonoBehaviour
 
     private IEnumerator StartDayTwoTransition()
     {
-        dayTransitionCanvas.blocksRaycasts = true;
+        if (dayTransitionCanvas != null)
+        {
+            dayTransitionCanvas.interactable = true;
+            dayTransitionCanvas.blocksRaycasts = true;
+        }
 
         yield return Fade(0f, 1f);
 
-        dayText.text = "DAY 2";
-        dayText.gameObject.SetActive(true);
+        // The screen is now fully black.
+        // Switch the building highlights here so the player cannot see them change.
+        if (hotelHighlight != null)
+        {
+            hotelHighlight.DisableHighlight();
+        }
+
+        if (coffeeShopHighlight != null)
+        {
+            coffeeShopHighlight.EnableHighlight();
+        }
+
+        if (dayText != null)
+        {
+            dayText.text = "DAY 2";
+            dayText.gameObject.SetActive(true);
+        }
 
         yield return new WaitForSeconds(dayTextDuration);
 
-        MovePlayer();
+        MovePlayerToDayTwoSpawn();
 
         if (objectiveText != null)
         {
-            objectiveText.text =
-                "Objective: Go to the café and speak to someone";
+            objectiveText.text = "Objective: Go to the coffee shop";
         }
 
-        dayText.gameObject.SetActive(false);
+        if (dayText != null)
+        {
+            dayText.gameObject.SetActive(false);
+        }
 
         yield return Fade(1f, 0f);
 
-        dayTransitionCanvas.blocksRaycasts = false;
+        if (dayTransitionCanvas != null)
+        {
+            dayTransitionCanvas.interactable = false;
+            dayTransitionCanvas.blocksRaycasts = false;
+        }
     }
 
     private IEnumerator Fade(float startAlpha, float endAlpha)
     {
+        if (dayTransitionCanvas == null)
+            yield break;
+
         float timer = 0f;
 
         while (timer < fadeDuration)
@@ -114,7 +153,7 @@ public class HotelSequenceManager : MonoBehaviour
         dayTransitionCanvas.alpha = endAlpha;
     }
 
-    private void MovePlayer()
+    private void MovePlayerToDayTwoSpawn()
     {
         if (player == null || dayTwoSpawnPoint == null)
             return;
