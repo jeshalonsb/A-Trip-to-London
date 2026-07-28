@@ -89,9 +89,20 @@ public class CoffeeShopSequenceManager : MonoBehaviour
         {
             coffeeShopHighlight.DisableHighlight();
         }
+
         if (objectiveText != null)
         {
-            objectiveText.text = "Objective: Ride The Double Decker Bus back to the hotel";
+            objectiveText.text = "Objective: Score a goal in the park.";
+        }
+
+        if (SoccerMinigameManager.Instance != null)
+        {
+            Debug.Log("Soccer manager found. Starting soccer minigame.");
+            SoccerMinigameManager.Instance.StartSoccerMinigame();
+        }
+        else
+        {
+            Debug.LogError("SoccerMinigameManager.Instance is NULL.");
         }
 
         Debug.Log("Coffee minigame completed");

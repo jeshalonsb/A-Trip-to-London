@@ -23,6 +23,15 @@ public class HotelSequenceManager : MonoBehaviour
     [SerializeField] private float fadeDuration = 1f;
     [SerializeField] private float dayTextDuration = 2f;
 
+    [Header("Day 3")]
+    [SerializeField] private Transform dayThreeSpawnPoint;
+    [SerializeField] private GameObject doubleDeckerBus;
+
+    private bool dayThreeEntranceUnlocked;
+    private bool dayThreeStarted;
+
+    public bool DayThreeEntranceUnlocked => dayThreeEntranceUnlocked;
+
     private bool hotelEntranceUnlocked;
     private bool transitionStarted;
 
@@ -57,6 +66,11 @@ public class HotelSequenceManager : MonoBehaviour
         if (coffeeShopHighlight != null)
         {
             coffeeShopHighlight.DisableHighlight();
+        }
+
+        if (doubleDeckerBus != null)
+        {
+            doubleDeckerBus.SetActive(false);
         }
     }
 
@@ -168,6 +182,109 @@ public class HotelSequenceManager : MonoBehaviour
 
         player.position = dayTwoSpawnPoint.position;
         player.rotation = dayTwoSpawnPoint.rotation;
+
+        if (controller != null)
+        {
+            controller.enabled = true;
+        }
+    }
+    public void UnlockHotelForDayThree()
+    {
+        if (dayThreeEntranceUnlocked)
+            return;
+
+        dayThreeEntranceUnlocked = true;
+        transitionStarted = false;
+
+        if (hotelHighlight != null)
+        {
+            hotelHighlight.EnableHighlight();
+        }
+
+        if (objectiveText != null)
+        {
+            objectiveText.text = "Objective: Head back to your hotel";
+        }
+
+        Debug.Log("Hotel unlocked for Day 3.");
+    }
+    public void TryEnterHotelForDayThree()
+    {
+        if (!dayThreeEntranceUnlocked || transitionStarted || dayThreeStarted)
+            return;
+
+        transitionStarted = true;
+        StartCoroutine(StartDayThreeTransition());
+    }
+    private IEnumerator StartDayThreeTransition()
+    {
+        if (dayTransitionCanvas != null)
+        {
+            dayTransitionCanvas.interactable = true;
+            dayTransitionCanvas.blocksRaycasts = true;
+        }
+
+        yield return Fade(0f, 1f);
+
+        if (hotelHighlight != null)
+        {
+            hotelHighlight.DisableHighlight();
+        }
+
+        if (dayText != null)
+        {
+            dayText.text = "DAY 3";
+            dayText.gameObject.SetActive(true);
+        }
+
+        yield return new WaitForSeconds(dayTextDuration);
+
+        MovePlayerToDayThreeSpawn();
+
+        dayThreeStarted = true;
+
+        if (doubleDeckerBus != null)
+        {
+            doubleDeckerBus.SetActive(true);
+        }
+
+        if (objectiveText != null)
+        {
+            objectiveText.text = "Objective: Catch a ride on the double-decker bus";
+        }
+
+        if (dayText != null)
+        {
+            dayText.gameObject.SetActive(false);
+        }
+
+        yield return Fade(1f, 0f);
+
+        if (dayTransitionCanvas != null)
+        {
+            dayTransitionCanvas.interactable = false;
+            dayTransitionCanvas.blocksRaycasts = false;
+        }
+
+        transitionStarted = false;
+
+        Debug.Log("Day 3 started.");
+    }
+    private void MovePlayerToDayThreeSpawn()
+    {
+        if (player == null || dayThreeSpawnPoint == null)
+            return;
+
+        CharacterController controller =
+            player.GetComponent<CharacterController>();
+
+        if (controller != null)
+        {
+            controller.enabled = false;
+        }
+
+        player.position = dayThreeSpawnPoint.position;
+        player.rotation = dayThreeSpawnPoint.rotation;
 
         if (controller != null)
         {
