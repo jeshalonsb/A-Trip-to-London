@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
@@ -11,7 +9,7 @@ public class CoffeeShopSequenceManager : MonoBehaviour
     [SerializeField] private TMP_Text objectiveText;
 
     [Header("Minigame")]
-    [SerializeField] private CoffeeMinigame coffeeMinigame;
+    [SerializeField] private CoffeeCatchMinigame coffeeMinigame;
 
     [Header("Highlights")]
     [SerializeField] private BuildingHighlight coffeeShopHighlight;
@@ -33,6 +31,7 @@ public class CoffeeShopSequenceManager : MonoBehaviour
 
         Instance = this;
     }
+
     public void UnlockCoffeeShop()
     {
         if (entranceUnlocked)
@@ -44,44 +43,72 @@ public class CoffeeShopSequenceManager : MonoBehaviour
 
         if (objectiveText != null)
         {
-            objectiveText.text = "Objective: Enter the coffee shop";
+            objectiveText.text =
+                "Objective: Enter the coffee shop";
         }
-
     }
+
     public void TryEnterCoffeeShop()
     {
         if (!entranceUnlocked)
         {
-            Debug.LogWarning("Coffee shop is still locked.");
+            Debug.LogWarning(
+                "Coffee shop is still locked."
+            );
+
             return;
         }
 
         if (minigameStarted)
         {
-            Debug.LogWarning("Minigame already started.");
+            Debug.LogWarning(
+                "Coffee minigame already started."
+            );
+
             return;
         }
 
         if (minigameCompleted)
         {
-            Debug.LogWarning("Minigame already completed.");
+            Debug.LogWarning(
+                "Coffee minigame already completed."
+            );
+
             return;
         }
 
         if (coffeeMinigame == null)
         {
-            Debug.LogError("CoffeeMinigame is NULL.");
+            Debug.LogError(
+                "CoffeeCatchMinigame is not assigned."
+            );
+
             return;
         }
 
         minigameStarted = true;
 
-        Debug.Log("Starting Coffee Minigame!");
+        if (coffeeShopHighlight != null)
+        {
+            coffeeShopHighlight.DisableHighlight();
+        }
 
-        coffeeMinigame.BeginMinigame();
+        if (objectiveText != null)
+        {
+            objectiveText.text =
+                "Catch the ingredients and avoid the bad items!";
+        }
+
+        Debug.Log("Starting coffee catching minigame.");
+
+        coffeeMinigame.StartMinigame();
     }
+
     public void CompleteCoffeeMinigame()
     {
+        if (minigameCompleted)
+            return;
+
         minigameCompleted = true;
         minigameStarted = false;
 
@@ -92,19 +119,42 @@ public class CoffeeShopSequenceManager : MonoBehaviour
 
         if (objectiveText != null)
         {
-            objectiveText.text = "Objective: Score a goal in the park.";
+            objectiveText.text =
+                "Objective: Score a goal in the park.";
         }
 
         if (SoccerMinigameManager.Instance != null)
         {
-            Debug.Log("Soccer manager found. Starting soccer minigame.");
-            SoccerMinigameManager.Instance.StartSoccerMinigame();
+            Debug.Log(
+                "Coffee completed. Starting soccer minigame."
+            );
+
+            SoccerMinigameManager.Instance
+                .StartSoccerMinigame();
         }
         else
         {
-            Debug.LogError("SoccerMinigameManager.Instance is NULL.");
+            Debug.LogError(
+                "SoccerMinigameManager.Instance is null."
+            );
         }
 
-        Debug.Log("Coffee minigame completed");
+        Debug.Log("Coffee minigame completed.");
+    }
+
+    public void CancelCoffeeMinigame()
+    {
+        if (!minigameStarted || minigameCompleted)
+            return;
+
+        minigameStarted = false;
+
+        if (objectiveText != null)
+        {
+            objectiveText.text =
+                "Objective: Enter the coffee shop";
+        }
+
+        Debug.Log("Coffee minigame cancelled.");
     }
 }
