@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+using System.Collections;
+using TMPro;
 using UnityEngine;
 
 public class TrafficManager : MonoBehaviour
@@ -8,183 +9,291 @@ public class TrafficManager : MonoBehaviour
     {
         public Transform car;
         public int startingWaypoint;
-        [Range(0.25f, 2f)] public float speedMultiplier = 1f;
+
+        [Range(0.25f, 2f)]
+        public float speedMultiplier = 1f;
+
+        [Header("Individual Car Audio")]
         public AudioClip engineSound;
+        public AudioClip hornSound;
+
+        [Range(0.5f, 1.5f)]
+        public float enginePitch = 1f;
+
+        [Range(0.5f, 1.5f)]
+        public float hornPitch = 1f;
     }
 
-    [Header("Keep Your Existing Waypoints Here")]
+    [Header("Existing Waypoints")]
     [SerializeField] private Transform[] waypoints;
 
     [Header("Traffic Cars")]
     [SerializeField] private CarSetup[] cars;
 
-    [Header("Movement")]
-    [SerializeField] private float speed = 8f;
+    [Header("Driving")]
+    [SerializeField] private float drivingSpeed = 8f;
     [SerializeField] private float turnSpeed = 5f;
-    [SerializeField] private float waypointDistance = 1.5f;
+    [SerializeField] private float waypointReachDistance = 1.5f;
     [SerializeField] private float acceleration = 5f;
-    [SerializeField] private float braking = 12f;
+    [SerializeField] private float braking = 35f;
 
-    [Header("Traffic Stopping")]
-    [SerializeField] private LayerMask trafficLayer;
-    [SerializeField] private float checkDistance = 5f;
-    [SerializeField] private float checkWidth = 1.8f;
-    [SerializeField] private float checkHeight = 1.5f;
+    [Header("Obstacle Detection")]
+    [SerializeField] private float detectionDistance = 12f;
 
-    [Header("Engine Audio")]
+    [SerializeField]
+    private Vector3 detectionBoxSize =
+        new Vector3(2.5f, 1.8f, 1.5f);
+
+    [SerializeField]
+    private Vector3 detectionOriginOffset =
+        new Vector3(0f, 0.8f, 2f);
+
+    [SerializeField] private float stoppingDistance = 4f;
+
+    [Header("Traffic Audio")]
+    [Tooltip("Used when an individual car has no engine clip.")]
     [SerializeField] private AudioClip defaultEngineSound;
+
+    [Tooltip("Used when an individual car has no horn clip.")]
+    [SerializeField] private AudioClip defaultHornSound;
+
     [Range(0f, 1f)]
-    [SerializeField] private float engineVolume = 0.4f;
+    [SerializeField] private float engineVolume = 0.45f;
+
+    [Range(0f, 1f)]
+    [SerializeField] private float hornVolume = 0.8f;
+
+    [Tooltip("Engine is at full volume inside this distance.")]
     [SerializeField] private float audioMinDistance = 3f;
-    [SerializeField] private float audioMaxDistance = 25f;
 
-    [Header("Player Respawn")]
-    [SerializeField] private TrafficPlayerRespawn playerRespawn;
-    [SerializeField] private float playerHitDistance = 2f;
+    [Tooltip("Engine becomes nearly silent at this distance.")]
+    [SerializeField] private float audioMaxDistance = 35f;
 
-    private readonly List<TrafficCar> activeCars = new List<TrafficCar>();
+    [Tooltip("Minimum time before the same car can honk again.")]
+    [SerializeField] private float hornCooldown = 4f;
+
+    [Header("Player Warning")]
+    [SerializeField] private TMP_Text warningText;
+
+    [SerializeField]
+    private string warningMessage =
+        "CARS KILL! BE CAREFUL!";
+
+    [SerializeField] private float warningDuration = 2.5f;
+
+    private Coroutine warningCoroutine;
 
     public Transform[] Waypoints => waypoints;
-    public float Speed => speed;
+
+    public float DrivingSpeed => drivingSpeed;
     public float TurnSpeed => turnSpeed;
-    public float WaypointDistance => waypointDistance;
+    public float WaypointReachDistance => waypointReachDistance;
     public float Acceleration => acceleration;
     public float Braking => braking;
-    public LayerMask TrafficLayer => trafficLayer;
-    public float CheckDistance => checkDistance;
-    public float CheckWidth => checkWidth;
-    public float CheckHeight => checkHeight;
+
+    public float DetectionDistance => detectionDistance;
+    public Vector3 DetectionBoxSize => detectionBoxSize;
+    public Vector3 DetectionOriginOffset => detectionOriginOffset;
+    public float StoppingDistance => stoppingDistance;
+
     public float EngineVolume => engineVolume;
+    public float HornVolume => hornVolume;
+    public float AudioMinDistance => audioMinDistance;
+    public float AudioMaxDistance => audioMaxDistance;
+    public float HornCooldown => hornCooldown;
+
+    private void Awake()
+    {
+        if (warningText != null)
+        {
+            warningText.gameObject.SetActive(false);
+        }
+    }
 
     private void Start()
     {
         if (waypoints == null || waypoints.Length == 0)
         {
-            Debug.LogError("TrafficManager: Add your existing waypoints.");
+            Debug.LogError(
+                "TrafficManager: No waypoints have been assigned.",
+                this
+            );
+
+            enabled = false;
+            return;
+        }
+
+        if (cars == null)
+        {
             return;
         }
 
         foreach (CarSetup setup in cars)
         {
             if (setup == null || setup.car == null)
+            {
                 continue;
+            }
 
-            TrafficCar trafficCar = setup.car.GetComponent<TrafficCar>();
+            TrafficCar trafficCar =
+                setup.car.GetComponent<TrafficCar>();
 
             if (trafficCar == null)
-                trafficCar = setup.car.gameObject.AddComponent<TrafficCar>();
+            {
+                trafficCar =
+                    setup.car.gameObject.AddComponent<TrafficCar>();
+            }
 
-            AudioClip clip = setup.engineSound != null
-                ? setup.engineSound
-                : defaultEngineSound;
+            int startingWaypoint = Mathf.Clamp(
+                setup.startingWaypoint,
+                0,
+                waypoints.Length - 1
+            );
+
+            AudioClip selectedEngine =
+                setup.engineSound != null
+                    ? setup.engineSound
+                    : defaultEngineSound;
+
+            AudioClip selectedHorn =
+                setup.hornSound != null
+                    ? setup.hornSound
+                    : defaultHornSound;
 
             trafficCar.Initialize(
                 this,
-                Mathf.Clamp(setup.startingWaypoint, 0, waypoints.Length - 1),
+                startingWaypoint,
                 setup.speedMultiplier,
-                clip,
-                audioMinDistance,
-                audioMaxDistance
+                selectedEngine,
+                selectedHorn,
+                setup.enginePitch,
+                setup.hornPitch
             );
-
-            activeCars.Add(trafficCar);
         }
     }
 
-    private void Update()
+    public void ShowPlayerWarning()
     {
-        if (playerRespawn == null || playerRespawn.IsRespawning)
-            return;
-
-        Transform player = playerRespawn.Player;
-
-        if (player == null)
-            return;
-
-        foreach (TrafficCar car in activeCars)
+        if (warningText == null)
         {
-            if (car == null)
-                continue;
-
-            Vector2 carPosition = new Vector2(
-                car.transform.position.x,
-                car.transform.position.z
-            );
-
-            Vector2 playerPosition = new Vector2(
-                player.position.x,
-                player.position.z
-            );
-
-            if (Vector2.Distance(carPosition, playerPosition) <= playerHitDistance)
-            {
-                playerRespawn.Respawn();
-                return;
-            }
+            return;
         }
+
+        if (warningCoroutine != null)
+        {
+            StopCoroutine(warningCoroutine);
+        }
+
+        warningCoroutine =
+            StartCoroutine(ShowWarningRoutine());
     }
 
-    public bool IsAnotherManagedCar(Transform root, TrafficCar askingCar)
+    private IEnumerator ShowWarningRoutine()
     {
-        foreach (TrafficCar car in activeCars)
-        {
-            if (car != null &&
-                car != askingCar &&
-                car.transform.root == root)
-            {
-                return true;
-            }
-        }
+        warningText.text = warningMessage;
+        warningText.gameObject.SetActive(true);
 
-        return false;
+        yield return new WaitForSeconds(warningDuration);
+
+        warningText.gameObject.SetActive(false);
+        warningCoroutine = null;
     }
 
     private void OnDrawGizmosSelected()
     {
-        if (waypoints != null)
+        DrawWaypoints();
+        DrawDetectionBoxes();
+    }
+
+    private void DrawWaypoints()
+    {
+        if (waypoints == null)
         {
-            Gizmos.color = Color.yellow;
-
-            for (int i = 0; i < waypoints.Length; i++)
-            {
-                if (waypoints[i] == null)
-                    continue;
-
-                Gizmos.DrawSphere(waypoints[i].position, 0.3f);
-
-                int next = (i + 1) % waypoints.Length;
-
-                if (waypoints[next] != null)
-                    Gizmos.DrawLine(waypoints[i].position, waypoints[next].position);
-            }
+            return;
         }
 
+        Gizmos.color = Color.yellow;
+
+        for (int i = 0; i < waypoints.Length; i++)
+        {
+            if (waypoints[i] == null)
+            {
+                continue;
+            }
+
+            Gizmos.DrawSphere(
+                waypoints[i].position,
+                0.3f
+            );
+
+            int nextIndex =
+                (i + 1) % waypoints.Length;
+
+            if (waypoints[nextIndex] != null)
+            {
+                Gizmos.DrawLine(
+                    waypoints[i].position,
+                    waypoints[nextIndex].position
+                );
+            }
+        }
+    }
+
+    private void DrawDetectionBoxes()
+    {
         if (cars == null)
+        {
             return;
+        }
 
         foreach (CarSetup setup in cars)
         {
             if (setup == null || setup.car == null)
+            {
                 continue;
+            }
 
             Transform car = setup.car;
 
-            Vector3 center =
-                car.position +
-                car.forward * (checkDistance * 0.5f) +
-                Vector3.up * (checkHeight * 0.5f);
+            Vector3 startPosition =
+                car.TransformPoint(detectionOriginOffset);
+
+            Vector3 endPosition =
+                startPosition +
+                car.forward * detectionDistance;
 
             Matrix4x4 oldMatrix = Gizmos.matrix;
-            Gizmos.matrix = Matrix4x4.TRS(center, car.rotation, Vector3.one);
+
             Gizmos.color = Color.cyan;
+
+            Gizmos.matrix = Matrix4x4.TRS(
+                startPosition,
+                car.rotation,
+                Vector3.one
+            );
+
             Gizmos.DrawWireCube(
                 Vector3.zero,
-                new Vector3(checkWidth, checkHeight, checkDistance)
+                detectionBoxSize
             );
+
+            Gizmos.matrix = Matrix4x4.TRS(
+                endPosition,
+                car.rotation,
+                Vector3.one
+            );
+
+            Gizmos.DrawWireCube(
+                Vector3.zero,
+                detectionBoxSize
+            );
+
             Gizmos.matrix = oldMatrix;
 
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(car.position, playerHitDistance);
+            Gizmos.DrawLine(
+                startPosition,
+                endPosition
+            );
         }
     }
 }
