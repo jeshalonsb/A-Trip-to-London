@@ -14,14 +14,21 @@ public class CoffeeCatchMinigame : MonoBehaviour
     [Header("Falling Item Prefabs")]
     [SerializeField] private FallingCoffeeItem[] itemPrefabs;
 
+    [Header("Item Size")]
+    [SerializeField]
+    private Vector2 itemSize =
+        new Vector2(150f, 150f);
+
     [Header("Game Settings")]
     [SerializeField] private int pointsNeeded = 15;
     [SerializeField] private int startingLives = 3;
     [SerializeField] private float spawnInterval = 0.8f;
+
+    [Header("Spawn Settings")]
     [SerializeField] private float spawnEdgePadding = 20f;
 
     [Header("Cup Settings")]
-    [SerializeField] private float cupEdgePadding = 20f;
+    [SerializeField] private float cupEdgePadding = 0f;
 
     [Header("UI Text")]
     [SerializeField] private TMP_Text scoreText;
@@ -73,7 +80,7 @@ public class CoffeeCatchMinigame : MonoBehaviour
         gamePanel.SetActive(true);
 
         Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = false;
+        Cursor.visible = true;
 
         currentPoints = 0;
         currentLives = startingLives;
@@ -86,7 +93,8 @@ public class CoffeeCatchMinigame : MonoBehaviour
         if (instructionText != null)
         {
             instructionText.text =
-                "Catch coffee beans, milk, and sugar!\nAvoid trash and salt!";
+                "Catch coffee beans, milk, and sugar!\n" +
+                "Avoid trash and salt!";
         }
 
         if (resultText != null)
@@ -163,14 +171,16 @@ public class CoffeeCatchMinigame : MonoBehaviour
             canvasCamera = canvas.worldCamera;
         }
 
-        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+        bool validPosition =
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 gameArea,
                 screenMousePosition,
                 canvasCamera,
-                out Vector2 localMousePosition))
-        {
+                out Vector2 localMousePosition
+            );
+
+        if (!validPosition)
             return;
-        }
 
         float halfAreaWidth =
             gameArea.rect.width * 0.5f;
@@ -202,9 +212,16 @@ public class CoffeeCatchMinigame : MonoBehaviour
 
     private void CenterCup()
     {
-        Vector2 cupPosition = cup.anchoredPosition;
+        if (cup == null)
+            return;
+
+        Vector2 cupPosition =
+            cup.anchoredPosition;
+
         cupPosition.x = 0f;
-        cup.anchoredPosition = cupPosition;
+
+        cup.anchoredPosition =
+            cupPosition;
     }
 
     private IEnumerator SpawnLoop()
@@ -221,31 +238,28 @@ public class CoffeeCatchMinigame : MonoBehaviour
 
     private void SpawnItem()
     {
-        if (!gameActive)
+        if (!gameActive ||
+            itemPrefabs == null ||
+            itemPrefabs.Length == 0)
+        {
             return;
+        }
 
-        if (itemPrefabs == null || itemPrefabs.Length == 0)
-            return;
-
-        int randomIndex = Random.Range(0, itemPrefabs.Length);
+        int randomIndex = Random.Range(
+            0,
+            itemPrefabs.Length
+        );
 
         FallingCoffeeItem selectedPrefab =
             itemPrefabs[randomIndex];
 
         if (selectedPrefab == null)
-        {
-            Debug.LogWarning(
-                "Item prefab slot " +
-                randomIndex +
-                " is empty."
-            );
-
             return;
-        }
 
         FallingCoffeeItem newItem = Instantiate(
             selectedPrefab,
-            itemContainer
+            itemContainer,
+            false
         );
 
         RectTransform itemRect =
@@ -253,41 +267,60 @@ public class CoffeeCatchMinigame : MonoBehaviour
 
         if (itemRect == null)
         {
+            Destroy(newItem.gameObject);
+            return;
+        }
+
+        itemRect.anchorMin =
+            new Vector2(0.5f, 0.5f);
+
+        itemRect.anchorMax =
+            new Vector2(0.5f, 0.5f);
+
+        itemRect.pivot =
+            new Vector2(0.5f, 0.5f);
+
+        itemRect.localScale = Vector3.one;
+        itemRect.localRotation = Quaternion.identity;
+
+        itemRect.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Horizontal,
+            itemSize.x
+        );
+
+        itemRect.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Vertical,
+            itemSize.y
+        );
+
+        Canvas.ForceUpdateCanvases();
+
+        float halfContainerWidth =
+            itemContainer.rect.width * 0.5f;
+
+        float halfItemWidth =
+            itemRect.rect.width * 0.5f;
+
+        float minimumX =
+            -halfContainerWidth +
+            halfItemWidth +
+            spawnEdgePadding;
+
+        float maximumX =
+            halfContainerWidth -
+            halfItemWidth -
+            spawnEdgePadding;
+
+        if (maximumX <= minimumX)
+        {
             Debug.LogError(
-                newItem.name +
-                " does not have a RectTransform."
+                "ItemContainer is too narrow. Width: " +
+                itemContainer.rect.width
             );
 
             Destroy(newItem.gameObject);
             return;
         }
-
-        // Reset the prefab's UI transform.
-        itemRect.anchorMin = new Vector2(0.5f, 0.5f);
-        itemRect.anchorMax = new Vector2(0.5f, 0.5f);
-        itemRect.pivot = new Vector2(0.5f, 0.5f);
-        itemRect.sizeDelta = new Vector2(70, 70);
-        itemRect.localScale = Vector3.one;
-        itemRect.localRotation = Quaternion.identity;
-
-        float containerHalfWidth =
-            itemContainer.rect.width * 0.5f;
-
-        float itemHalfWidth =
-            itemRect.rect.width * 0.5f;
-
-        // Small safety margin from each edge.
-        float edgePadding = 10f;
-
-        float minimumX =
-            -containerHalfWidth +
-            itemHalfWidth +
-            edgePadding;
-
-        float maximumX =
-            containerHalfWidth -
-            itemHalfWidth -
-            edgePadding;
 
         float randomX = Random.Range(
             minimumX,
@@ -304,12 +337,8 @@ public class CoffeeCatchMinigame : MonoBehaviour
         newItem.Initialize(this);
 
         Debug.Log(
-            "Spawned " +
-            newItem.name +
-            " at X: " +
-            randomX +
-            " | Container width: " +
-            itemContainer.rect.width
+            $"Spawned {newItem.name} at X {randomX}. " +
+            $"Container width: {itemContainer.rect.width}"
         );
     }
 
@@ -355,7 +384,9 @@ public class CoffeeCatchMinigame : MonoBehaviour
         }
         else if (currentLives <= 0)
         {
-            StartCoroutine(RestartRound());
+            StartCoroutine(
+                RestartRound()
+            );
         }
     }
 
@@ -366,20 +397,29 @@ public class CoffeeCatchMinigame : MonoBehaviour
             return;
 
         bool goodIngredient =
-            itemType == FallingCoffeeItem.ItemType.CoffeeBean ||
-            itemType == FallingCoffeeItem.ItemType.Milk ||
-            itemType == FallingCoffeeItem.ItemType.Sugar;
+            itemType ==
+            FallingCoffeeItem.ItemType.CoffeeBean ||
+            itemType ==
+            FallingCoffeeItem.ItemType.Milk ||
+            itemType ==
+            FallingCoffeeItem.ItemType.Sugar;
 
         if (!goodIngredient)
             return;
 
         LoseLives(1);
-        ShowResult("Missed ingredient! -1 Life");
+
+        ShowResult(
+            "Missed ingredient! -1 Life"
+        );
+
         UpdateUI();
 
         if (currentLives <= 0)
         {
-            StartCoroutine(RestartRound());
+            StartCoroutine(
+                RestartRound()
+            );
         }
     }
 
@@ -414,20 +454,29 @@ public class CoffeeCatchMinigame : MonoBehaviour
         StopSpawning();
         ClearItems();
 
-        StartCoroutine(CompleteAfterDelay());
+        StartCoroutine(
+            CompleteAfterDelay()
+        );
     }
 
     private IEnumerator CompleteAfterDelay()
     {
         if (resultText != null)
         {
-            resultText.text = "Coffee Complete!";
+            resultText.text =
+                "Coffee Complete!";
+
             resultText.gameObject.SetActive(true);
         }
 
         yield return new WaitForSeconds(
             completionDelay
         );
+
+        Cursor.lockState =
+            CursorLockMode.Locked;
+
+        Cursor.visible = false;
 
         if (CoffeeShopSequenceManager.Instance != null)
         {
@@ -440,9 +489,6 @@ public class CoffeeCatchMinigame : MonoBehaviour
                 "CoffeeShopSequenceManager.Instance is null."
             );
         }
-
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
 
         gamePanel.SetActive(false);
     }
@@ -460,7 +506,9 @@ public class CoffeeCatchMinigame : MonoBehaviour
 
         if (resultText != null)
         {
-            resultText.text = "Out of lives! Try again.";
+            resultText.text =
+                "Out of lives! Try again.";
+
             resultText.gameObject.SetActive(true);
         }
 
@@ -482,9 +530,10 @@ public class CoffeeCatchMinigame : MonoBehaviour
         roundRestarting = false;
         gameActive = true;
 
-        spawningCoroutine = StartCoroutine(
-            SpawnLoop()
-        );
+        spawningCoroutine =
+            StartCoroutine(
+                SpawnLoop()
+            );
     }
 
     private void ShowResult(string message)
@@ -494,12 +543,17 @@ public class CoffeeCatchMinigame : MonoBehaviour
 
         if (resultCoroutine != null)
         {
-            StopCoroutine(resultCoroutine);
+            StopCoroutine(
+                resultCoroutine
+            );
         }
 
-        resultCoroutine = StartCoroutine(
-            ShowResultTemporarily(message)
-        );
+        resultCoroutine =
+            StartCoroutine(
+                ShowResultTemporarily(
+                    message
+                )
+            );
     }
 
     private IEnumerator ShowResultTemporarily(
@@ -508,7 +562,9 @@ public class CoffeeCatchMinigame : MonoBehaviour
         resultText.text = message;
         resultText.gameObject.SetActive(true);
 
-        yield return new WaitForSeconds(0.65f);
+        yield return new WaitForSeconds(
+            0.65f
+        );
 
         if (gameActive)
         {
@@ -541,7 +597,10 @@ public class CoffeeCatchMinigame : MonoBehaviour
     {
         if (spawningCoroutine != null)
         {
-            StopCoroutine(spawningCoroutine);
+            StopCoroutine(
+                spawningCoroutine
+            );
+
             spawningCoroutine = null;
         }
     }
@@ -552,8 +611,10 @@ public class CoffeeCatchMinigame : MonoBehaviour
             return;
 
         FallingCoffeeItem[] items =
-            itemContainer.GetComponentsInChildren<
-                FallingCoffeeItem>(true);
+            itemContainer
+                .GetComponentsInChildren<
+                    FallingCoffeeItem
+                >(true);
 
         foreach (FallingCoffeeItem item in items)
         {

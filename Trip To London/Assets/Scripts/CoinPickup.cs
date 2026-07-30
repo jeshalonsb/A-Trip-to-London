@@ -10,6 +10,9 @@ public class CoinPickup : MonoBehaviour
     [Header("Audio")]
     [SerializeField] private AudioClip pickupSound;
 
+    [Range(0f, 1f)]
+    [SerializeField] private float pickupVolume = 1f;
+
     private Vector3 startingPosition;
     private bool collected;
 
@@ -57,6 +60,12 @@ public class CoinPickup : MonoBehaviour
             manager = FindFirstObjectByType<CoinManager>();
         }
 
+        if (manager == null)
+        {
+            Debug.LogError("No CoinManager was found in the scene.");
+            return;
+        }
+
         collected = true;
 
         // Count the coin before destroying it.
@@ -66,7 +75,8 @@ public class CoinPickup : MonoBehaviour
         {
             AudioSource.PlayClipAtPoint(
                 pickupSound,
-                transform.position
+                transform.position,
+                pickupVolume
             );
         }
 

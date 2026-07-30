@@ -12,6 +12,11 @@ public class SoccerBallKick : MonoBehaviour
     [SerializeField] private Transform playerCamera;
     [SerializeField] private TMP_Text interactionText;
 
+    [Header("Audio")]
+    [SerializeField] private AudioClip kickClip;
+    [Range(0f, 1f)]
+    [SerializeField] private float kickclipVolume;
+
     private Transform player;
     private Rigidbody ballRigidbody;
     private bool minigameActive;
@@ -100,6 +105,11 @@ public class SoccerBallKick : MonoBehaviour
             Vector3.up * upwardForce;
 
         ballRigidbody.AddForce(kickDirection, ForceMode.Impulse);
+
+        if (kickClip != null)
+        {
+            AudioSource.PlayClipAtPoint(kickClip, transform.position, kickclipVolume);
+        }
 
         Debug.Log("Soccer ball kicked.");
     }

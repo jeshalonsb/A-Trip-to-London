@@ -49,7 +49,7 @@ Material:
     - _CloudsHeight: 0
     - _CloudsRotation: 0
     - _Exponent: 1
-    - _Exposure: 1
+    - _Exposure: 0.4
     - _MoonHalo: 1
     - _MoonSize: 0.75
     - _StarsExtinction: 2
