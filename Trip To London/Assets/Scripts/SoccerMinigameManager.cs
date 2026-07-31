@@ -19,6 +19,9 @@ public class SoccerMinigameManager : MonoBehaviour
     [SerializeField] private float goalMessageDuration = 2f;
     [SerializeField] private float ballResetDelay = 1f;
 
+    [Header("Audio")]
+    [SerializeField] private AudioClip goalSound;
+
     private bool minigameActive;
     private bool objectiveCompleted;
     private bool resettingBall;
@@ -121,6 +124,11 @@ public class SoccerMinigameManager : MonoBehaviour
         {
             resultText.text = "GOAL!";
             resultText.gameObject.SetActive(true);
+        }
+
+        if (goalSound != null)
+        {
+            AudioSource.PlayClipAtPoint(goalSound, transform.position);
         }
 
         yield return new WaitForSeconds(goalMessageDuration);

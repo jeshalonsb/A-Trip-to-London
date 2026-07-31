@@ -26,6 +26,9 @@ public class Day3SequenceManager : MonoBehaviour
     [SerializeField] private GameObject photoPanel;
     [SerializeField] private RawImage photoDisplay;
 
+    [Header("Audio")]
+    [SerializeField] private AudioClip pictureClick;
+
     private bool selfieAvailable;
     private bool selfieTaken;
     private bool takingPhoto;
@@ -103,6 +106,11 @@ public class Day3SequenceManager : MonoBehaviour
     {
         if (!selfieAvailable || selfieTaken || takingPhoto)
             return;
+
+        if (pictureClick != null)
+        {
+            AudioSource.PlayClipAtPoint(pictureClick, transform.position);
+        }
 
         StartCoroutine(TakeSelfie());
     }
