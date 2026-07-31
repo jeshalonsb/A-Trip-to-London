@@ -56,15 +56,18 @@ public class SoccerBallKick : MonoBehaviour
         Vector3 playerPosition = player.position;
         Vector3 ballPosition = transform.position;
 
-        // Ignore height when checking distance.
         playerPosition.y = 0f;
         ballPosition.y = 0f;
 
-        float distance = Vector3.Distance(playerPosition, ballPosition);
+        float distance = Vector3.Distance(
+            playerPosition,
+            ballPosition
+        );
 
-        playerCloseEnough = distance <= interactionDistance;
+        bool isCloseEnough =
+            distance <= interactionDistance;
 
-        if (playerCloseEnough)
+        if (isCloseEnough)
         {
             ShowInteractionText();
 
@@ -73,10 +76,14 @@ public class SoccerBallKick : MonoBehaviour
                 KickBall();
             }
         }
-        else
+        else if (playerCloseEnough)
         {
+            // Only hide it once when leaving the ball,
+            // rather than disabling shared UI every frame.
             HideInteractionText();
         }
+
+        playerCloseEnough = isCloseEnough;
     }
 
     private void KickBall()
