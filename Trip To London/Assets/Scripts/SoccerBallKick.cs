@@ -1,6 +1,10 @@
 using TMPro;
 using UnityEngine;
 
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
+
 public class SoccerBallKick : MonoBehaviour
 {
     [Header("Kick Settings")]
@@ -8,54 +12,104 @@ public class SoccerBallKick : MonoBehaviour
     [SerializeField] private float upwardForce = 1.5f;
     [SerializeField] private float interactionDistance = 3f;
 
-    [Header("References")]
+    [Header("Player References")]
+    [Tooltip("Drag the main PlayerArmature object here.")]
+    [SerializeField] private Transform player;
+
+    [Tooltip("Drag the Main Camera here.")]
     [SerializeField] private Transform playerCamera;
+
+    [Header("UI")]
+    [Tooltip("Use a separate text object only for the soccer ball.")]
     [SerializeField] private TMP_Text interactionText;
 
     [Header("Audio")]
     [SerializeField] private AudioClip kickClip;
-    [Range(0f, 1f)]
-    [SerializeField] private float kickclipVolume;
 
-    private Transform player;
+    [Range(0f, 1f)]
+    [SerializeField] private float kickClipVolume = 1f;
+
     private Rigidbody ballRigidbody;
+
     private bool minigameActive;
-    private bool playerCloseEnough;
+    private bool playerWasClose;
 
     private void Awake()
     {
         ballRigidbody = GetComponent<Rigidbody>();
 
-        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-
-        if (playerObject != null)
-        {
-            player = playerObject.transform;
-        }
-        else
-        {
-            Debug.LogError("No GameObject with the Player tag was found.");
-        }
-
         if (ballRigidbody == null)
         {
-            Debug.LogError("The soccer ball is missing a Rigidbody.");
+            Debug.LogError(
+                "SoccerBallKick: The soccer ball needs a Rigidbody.",
+                this
+            );
         }
     }
 
     private void Start()
     {
         HideInteractionText();
+
+        if (player == null)
+        {
+            Debug.LogError(
+                "SoccerBallKick: Player is not assigned in the Inspector.",
+                this
+            );
+        }
+
+        if (playerCamera == null)
+        {
+            Debug.LogWarning(
+                "SoccerBallKick: Player Camera is not assigned. " +
+                "The player's forward direction will be used instead.",
+                this
+            );
+        }
+
+        if (interactionText == null)
+        {
+            Debug.LogError(
+                "SoccerBallKick: Interaction Text is not assigned.",
+                this
+            );
+        }
     }
 
     private void Update()
     {
         if (!minigameActive || player == null)
+        {
             return;
+        }
 
+        bool playerIsClose = IsPlayerCloseEnough();
+
+        if (playerIsClose)
+        {
+            ShowInteractionText();
+
+            if (InteractPressed())
+            {
+                KickBall();
+            }
+        }
+        else if (playerWasClose)
+        {
+            // Hide only once when the player leaves the ball.
+            HideInteractionText();
+        }
+
+        playerWasClose = playerIsClose;
+    }
+
+    private bool IsPlayerCloseEnough()
+    {
         Vector3 playerPosition = player.position;
         Vector3 ballPosition = transform.position;
 
+        // Ignore vertical distance.
         playerPosition.y = 0f;
         ballPosition.y = 0f;
 
@@ -64,32 +118,35 @@ public class SoccerBallKick : MonoBehaviour
             ballPosition
         );
 
-        bool isCloseEnough =
-            distance <= interactionDistance;
+        return distance <= interactionDistance;
+    }
 
-        if (isCloseEnough)
+    private bool InteractPressed()
+    {
+#if ENABLE_INPUT_SYSTEM
+        if (Keyboard.current != null &&
+            Keyboard.current.eKey.wasPressedThisFrame)
         {
-            ShowInteractionText();
-
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                KickBall();
-            }
+            return true;
         }
-        else if (playerCloseEnough)
+#endif
+
+#if ENABLE_LEGACY_INPUT_MANAGER
+        if (Input.GetKeyDown(KeyCode.E))
         {
-            // Only hide it once when leaving the ball,
-            // rather than disabling shared UI every frame.
-            HideInteractionText();
+            return true;
         }
+#endif
 
-        playerCloseEnough = isCloseEnough;
+        return false;
     }
 
     private void KickBall()
     {
-        if (ballRigidbody == null)
+        if (ballRigidbody == null || player == null)
+        {
             return;
+        }
 
         Vector3 direction;
 
@@ -103,20 +160,38 @@ public class SoccerBallKick : MonoBehaviour
         }
 
         direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.001f)
+        {
+            direction = player.forward;
+            direction.y = 0f;
+        }
+
         direction.Normalize();
 
         ballRigidbody.velocity = Vector3.zero;
+        ballRigidbody.angularVelocity = Vector3.zero;
 
         Vector3 kickDirection =
             direction * kickForce +
             Vector3.up * upwardForce;
 
-        ballRigidbody.AddForce(kickDirection, ForceMode.Impulse);
+        ballRigidbody.AddForce(
+            kickDirection,
+            ForceMode.Impulse
+        );
 
         if (kickClip != null)
         {
-            AudioSource.PlayClipAtPoint(kickClip, transform.position, kickclipVolume);
+            AudioSource.PlayClipAtPoint(
+                kickClip,
+                transform.position,
+                kickClipVolume
+            );
         }
+
+        HideInteractionText();
+        playerWasClose = false;
 
         Debug.Log("Soccer ball kicked.");
     }
@@ -124,29 +199,48 @@ public class SoccerBallKick : MonoBehaviour
     public void SetMinigameActive(bool active)
     {
         minigameActive = active;
+        playerWasClose = false;
 
-        Debug.Log("Ball interaction active: " + active);
+        HideInteractionText();
 
-        if (!active)
-        {
-            HideInteractionText();
-        }
+        Debug.Log(
+            "Ball interaction active: " + active
+        );
     }
 
     private void ShowInteractionText()
     {
         if (interactionText == null)
+        {
             return;
+        }
 
         interactionText.text = "Press E to Kick";
+
+        // Activate its parent in case a transition disabled it.
+        if (interactionText.transform.parent != null &&
+            !interactionText.transform.parent.gameObject.activeSelf)
+        {
+            interactionText.transform.parent.gameObject.SetActive(true);
+        }
+
         interactionText.gameObject.SetActive(true);
+        interactionText.enabled = true;
     }
 
     private void HideInteractionText()
     {
-        if (interactionText != null)
+        if (interactionText == null)
         {
-            interactionText.gameObject.SetActive(false);
+            return;
         }
+
+        interactionText.gameObject.SetActive(false);
+    }
+
+    private void OnDisable()
+    {
+        playerWasClose = false;
+        HideInteractionText();
     }
 }
