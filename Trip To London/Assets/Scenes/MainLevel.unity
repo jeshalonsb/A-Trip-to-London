@@ -8395,8 +8395,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -649.83344, y: -464}
-  m_SizeDelta: {x: 526.333, y: 50}
+  m_AnchoredPosition: {x: -546.7886, y: -464}
+  m_SizeDelta: {x: 732.4227, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &139464261
 CanvasRenderer:
@@ -88078,19 +88078,19 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 1924300310}
     m_Modifications:
     - target: {fileID: 2691098250163404978, guid: b8ff47cd5dec3e84d95caafb9d7711a0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 40.02
+      value: -34.399998
       objectReference: {fileID: 0}
     - target: {fileID: 2691098250163404978, guid: b8ff47cd5dec3e84d95caafb9d7711a0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.59
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2691098250163404978, guid: b8ff47cd5dec3e84d95caafb9d7711a0, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 5.619999
+      value: 49.21
       objectReference: {fileID: 0}
     - target: {fileID: 2691098250163404978, guid: b8ff47cd5dec3e84d95caafb9d7711a0, type: 3}
       propertyPath: m_LocalRotation.w
@@ -88129,6 +88129,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b8ff47cd5dec3e84d95caafb9d7711a0, type: 3}
+--- !u!4 &1479106761 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2691098250163404978, guid: b8ff47cd5dec3e84d95caafb9d7711a0, type: 3}
+  m_PrefabInstance: {fileID: 1479106760}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1479386108
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -117167,7 +117172,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1924300310
 Transform:
   m_ObjectHideFlags: 0
@@ -117181,6 +117186,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 1479106761}
   - {fileID: 1558298104}
   - {fileID: 951783702}
   - {fileID: 827878478}
@@ -131096,6 +131102,5 @@ SceneRoots:
   - {fileID: 295858915}
   - {fileID: 1687169110}
   - {fileID: 2127489634}
-  - {fileID: 1479106760}
   - {fileID: 1924300310}
   - {fileID: 1708904844}
