@@ -683,8 +683,8 @@ PlayerSettings:
   apiCompatibilityLevelPerPlatform: {}
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: Trip To London
-  metroPackageVersion: 
+  metroPackageName: TripToLondon
+  metroPackageVersion: 1.0.0.0
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
@@ -692,7 +692,7 @@ PlayerSettings:
   metroCertificateNotAfter: 0000000000000000
   metroApplicationDescription: Trip To London
   wsaImages: {}
-  metroTileShortName: 
+  metroTileShortName: Trip To London
   metroTileShowName: 0
   metroMediumTileShowName: 0
   metroLargeTileShowName: 0
